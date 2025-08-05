@@ -1,5 +1,3 @@
-// index.js
-
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
@@ -8,28 +6,39 @@ const path = require('path');
 const fs = require('fs');
 
 const app = express();
-const db = new sqlite3.Database('./multas.db');
+
+// Verificamos si el archivo de la base de datos existe
+const DB_PATH = path.join(__dirname, 'multas.db');
+if (!fs.existsSync(DB_PATH)) {
+  console.error('❌ No se encontró el archivo multas.db. El servidor no podrá iniciar correctamente.');
+}
+
+const db = new sqlite3.Database(DB_PATH, (err) => {
+  if (err) {
+    console.error('❌ Error al abrir la base de datos:', err.message);
+  } else {
+    console.log('✅ Conectado a la base de datos multas.db');
+  }
+});
 
 // Middlewares
 app.use(cors());
 app.use(bodyParser.json());
 
-// Ruta base para verificar que el servicio funciona
+// Ruta base
 app.get('/', (req, res) => {
   res.send('🚦 Backend de Multas está funcionando');
 });
 
-// Ruta /ping para health check
+// Health check
 app.get('/ping', (req, res) => {
   res.send('pong');
 });
 
-// Ruta para registrar una nueva patente
+// Registrar patente
 app.post('/api/patentes', (req, res) => {
   const { patente } = req.body;
-  if (!patente) {
-    return res.status(400).json({ error: 'La patente es requerida' });
-  }
+  if (!patente) return res.status(400).json({ error: 'La patente es requerida' });
 
   db.run('INSERT OR IGNORE INTO patentes (patente) VALUES (?)', [patente], function (err) {
     if (err) {
@@ -40,9 +49,10 @@ app.post('/api/patentes', (req, res) => {
   });
 });
 
-// Ruta para eliminar una patente
+// Eliminar patente
 app.delete('/api/patentes/:patente', (req, res) => {
   const { patente } = req.params;
+
   db.run('DELETE FROM patentes WHERE patente = ?', [patente], function (err) {
     if (err) {
       console.error('Error al eliminar patente:', err.message);
@@ -52,7 +62,7 @@ app.delete('/api/patentes/:patente', (req, res) => {
   });
 });
 
-// Ruta para obtener todas las patentes
+// Obtener todas las patentes
 app.get('/api/patentes', (req, res) => {
   db.all('SELECT patente FROM patentes', [], (err, rows) => {
     if (err) {
@@ -63,9 +73,10 @@ app.get('/api/patentes', (req, res) => {
   });
 });
 
-// Ruta para obtener multas de una patente
+// Obtener multas de una patente
 app.get('/api/multas/:patente', (req, res) => {
   const { patente } = req.params;
+
   db.all('SELECT * FROM multas WHERE patente = ?', [patente], (err, rows) => {
     if (err) {
       console.error('Error al obtener multas:', err.message);
@@ -75,7 +86,7 @@ app.get('/api/multas/:patente', (req, res) => {
   });
 });
 
-// Ruta para servir imágenes de evidencias
+// Servir imágenes de evidencia
 app.get('/evidencias/:filename', (req, res) => {
   const { filename } = req.params;
   const imagePath = path.join(__dirname, 'evidencias', filename);
@@ -87,8 +98,8 @@ app.get('/evidencias/:filename', (req, res) => {
   }
 });
 
-// Iniciar servidor en Render (usa process.env.PORT o 3000 por defecto en local)
+// Iniciar servidor
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
-  console.log(`Servidor escuchando en el puerto ${port}`);
+  console.log(`🚀 Servidor escuchando en el puerto ${port}`);
 });
