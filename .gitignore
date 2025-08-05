@@ -1,0 +1,21 @@
+# Entornos y dependencias
+node_modules/
+.env
+.env.*
+
+# Bases de datos
+*.sqlite
+*.db
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
