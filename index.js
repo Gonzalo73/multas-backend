@@ -7,18 +7,42 @@ const fs = require('fs');
 
 const app = express();
 
-// Verificamos si el archivo de la base de datos existe
-const DB_PATH = path.join(__dirname, 'multas.db');
-if (!fs.existsSync(DB_PATH)) {
-  console.error('❌ No se encontró el archivo multas.db. El servidor no podrá iniciar correctamente.');
+// Usamos la carpeta persistente de Render
+const DB_DIR = '/var/data';
+const DB_PATH = path.join(DB_DIR, 'multas.db');
+
+// Si la base no existe, la creamos vacía
+if (!fs.existsSync(DB_DIR)) {
+  fs.mkdirSync(DB_DIR, { recursive: true });
 }
 
 const db = new sqlite3.Database(DB_PATH, (err) => {
   if (err) {
-    console.error('❌ Error al abrir la base de datos:', err.message);
+    console.error('❌ Error al conectar con la base de datos:', err.message);
   } else {
-    console.log('✅ Conectado a la base de datos multas.db');
+    console.log(`✅ Conectado a base de datos en ${DB_PATH}`);
   }
+});
+
+// Crear tablas si no existen
+db.serialize(() => {
+  db.run(`CREATE TABLE IF NOT EXISTS patentes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT,
+    patente TEXT UNIQUE
+  )`);
+
+  db.run(`CREATE TABLE IF NOT EXISTS multas (
+    id_multa TEXT PRIMARY KEY,
+    patente TEXT,
+    descripcion TEXT,
+    fecha TEXT,
+    lat REAL,
+    lng REAL,
+    imagen TEXT
+  )`);
+
+  console.log('📦 Tablas creadas/verificadas');
 });
 
 // Middlewares
@@ -37,16 +61,20 @@ app.get('/ping', (req, res) => {
 
 // Registrar patente
 app.post('/api/patentes', (req, res) => {
-  const { patente } = req.body;
+  const { patente, email } = req.body;
   if (!patente) return res.status(400).json({ error: 'La patente es requerida' });
 
-  db.run('INSERT OR IGNORE INTO patentes (patente) VALUES (?)', [patente], function (err) {
-    if (err) {
-      console.error('Error al registrar patente:', err.message);
-      return res.status(500).json({ error: 'Error al registrar patente' });
+  db.run(
+    'INSERT OR IGNORE INTO patentes (patente, email) VALUES (?, ?)',
+    [patente, email || null],
+    function (err) {
+      if (err) {
+        console.error('Error al registrar patente:', err.message);
+        return res.status(500).json({ error: 'Error al registrar patente' });
+      }
+      res.status(201).json({ success: true });
     }
-    res.status(201).json({ success: true });
-  });
+  );
 });
 
 // Eliminar patente
@@ -64,7 +92,7 @@ app.delete('/api/patentes/:patente', (req, res) => {
 
 // Obtener todas las patentes
 app.get('/api/patentes', (req, res) => {
-  db.all('SELECT patente FROM patentes', [], (err, rows) => {
+  db.all('SELECT patente, email FROM patentes', [], (err, rows) => {
     if (err) {
       console.error('Error al obtener patentes:', err.message);
       return res.status(500).json({ error: 'Error al obtener patentes' });
