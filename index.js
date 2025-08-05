@@ -14,6 +14,16 @@ const db = new sqlite3.Database('./multas.db');
 app.use(cors());
 app.use(bodyParser.json());
 
+// Ruta base para verificar que el servicio funciona
+app.get('/', (req, res) => {
+  res.send('🚦 Backend de Multas está funcionando');
+});
+
+// Ruta /ping para health check
+app.get('/ping', (req, res) => {
+  res.send('pong');
+});
+
 // Ruta para registrar una nueva patente
 app.post('/api/patentes', (req, res) => {
   const { patente } = req.body;
